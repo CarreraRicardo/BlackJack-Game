@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+	<title>Blackjack</title>
+
+	<style>* {padding: 0; margin: 0}</style>
+</head>
+<body>
+	
+	
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="/js/pixi.min.js"></script>
+
+	<script>
+
+		var socket = io();
+
+		
+		var playerCanClicks = null;
+		var playerBet = 0;
+		var textScore = null;
+		var styleScore = {
+
+		    fontFamily : 'Arial',
+		    fontSize : '20px',
+		    fontStyle : 'italic',
+		    fontWeight : 'bold',
+		    fill : '#F7EDCA',
+		    stroke : '#4a1850',
+		    strokeThickness : 5,
+		    dropShadow : true,
+		    dropShadowColor : '#000000',
+		    dropShadowAngle : Math.PI / 6,
+		    dropShadowDistance : 6,
+		    wordWrap : true,
+		    wordWrapWidth : 440
+		};
+
+		var playerId = null;
+
+		
+
+		var positionCards = [[100,230], [350,350],[635,370],[920,350],[1170,230]];
+		var positionScore = [[100,200],[350,320],[635,340],[920,320],[1170,200]];
+
+		var positionDealer = [550,130];
+		var positionScoreDealer = [510,130];
+
+		var positionAdvicePlayer = [[100,160],[350,280],[635,300],[920,280],[1170,160]];
+
+		var positionMoneyPlayer = [[25,230],[275,350],[560,370],[845,350],[1095,230]];
+
+		//console.log("Posiciones del arrelgo de cartas: " + positionCards.length);
+
+		var renderer = PIXI.autoDetectRenderer();
+		renderer.view.style.position = "absolute";
+		renderer.view.style.display = "block";
+		renderer.autoResize = true;
+		renderer.resize(window.innerWidth, window.innerHeight);
+		document.body.appendChild(renderer.view);
+
+		// create the root of the scene graph
+		var stage = new PIXI.Container();
+
+		var scenePrincipalMenu = new PIXI.DisplayObjectContainer;
+
+		var sceneWaitingPlayers = new PIXI.DisplayObjectContainer;
+
+		var sceneGame = new PIXI.DisplayObjectContainer;
+
+
+
+		var waitingImage = PIXI.Sprite.fromImage('/img/esperando.png');
+		waitingImage.width = renderer.width;
+		waitingImage.height = renderer.height;
+		sceneWaitingPlayers.addChild(waitingImage);
+
+
+		var tableImage = PIXI.Sprite.fromImage('/img/mesa.jpg');
+		tableImage.width = renderer.width;
+		tableImage.height = renderer.height;
+		sceneGame.addChild(tableImage);
+
+
+		var backgroundImage = PIXI.Sprite.fromImage('/img/background.jpg');
+		backgroundImage.width = renderer.width;
+		backgroundImage.height = renderer.height;
+		scenePrincipalMenu.addChild(backgroundImage);
+
+		var imageLogo = PIXI.Sprite.fromImage('/img/blackjack_logo.png');
+		imageLogo.position.set(400,5);
+		imageLogo.height = 250;
+		scenePrincipalMenu.addChild(imageLogo);
+
+	
+
+		var textureButtonMultiplayer = PIXI.Texture.fromImage('/img/multiplayer.png');
+		var textureButtonPlay = PIXI.Texture.fromImage('/img/play.png');
+		var textureButtonHit = PIXI.Texture.fromImage('/img/hit.png');
+		var textureButtonStand = PIXI.Texture.fromImage('/img/stand.png');
+		var textureButtonDeal = PIXI.Texture.fromImage('/img/dealButton.png');
+		var textureButtonCoin = PIXI.Texture.fromImage('/img/coin.png');
+
+		var buttons = [];
+
+		var buttonPositions = [
+
+			 700, 325, //index 0 ,1
+			 1100,555, //index 2,3 boton hit
+			 1210,555, // index 4,5 boton stand
+			 990,555,  // index 6,7 boton deal
+			 880,555,  // index 8,9 boton moneda
+		];
+
+		/* 
+		  recibo el id que me da el servidor para despues mandarlo
+		  cuando se una un jugador
+
+		*/
+		socket.on('idPlayer',function(idPlayer){
+
+
+			playerId = idPlayer;
+
+		});
+
+		socket.on('waitingPlayers',function(){
+
+			stage.getChildAt(0).visible = false; // Menu principial off
+			stage.getChildAt(1).visible = true; // Esperando jugadores On
+			
+
+
+		});
+
+		socket.on('fullPlayers',function(){
+
+			stage.getChildAt(1).visible = false;
+			stage.getChildAt(0).visible = false;
+			stage.getChildAt(2).visible = true;
+
+
+		});
+
+		socket.on('startGame',function(arrayCardsToNewGame,dealerCards){
+
+			
+
+			for(var i = 0; i < arrayCardsToNewGame.length; i++)
+			{	
+
+				for(var j = 0; j < 5; j++)
+				{	
+					var card = null;
+					
+					switch(j)
+					{
+
+						case 0:
+
+
+
+							card = PIXI.Sprite.fromImage('/img/'+arrayCardsToNewGame[i][j]+'.png');
+							card.width = 100;
+							card.height = 100;
+							card.x = positionCards[i][j];    // Posisicon x del arreglo 
+							card.y = positionCards[i][j+1]; // Posicion y del arreglo
+							stage.getChildAt(2).addChild(card);
+
+							positionCards[i][j+1] +=30;
+
+
+						break;
+
+						case 1:
+
+							//console.log("Posicion para la segunda carta: " + positionCards[i][j]);
+
+							card = PIXI.Sprite.fromImage('/img/'+arrayCardsToNewGame[i][j]+'.png');
+							card.width = 100;
+							card.height = 100;
+							card.x = positionCards[i][j-1];    // Posisicon x del arreglo 
+							card.y = positionCards[i][j]; // Posicion y del arreglo
+							stage.getChildAt(2).addChild(card);
+
+							positionCards[i][j] +=30;
+
+
+						break;
+
+						case 2:
+
+							textScore = new PIXI.Text(arrayCardsToNewGame[i][j],styleScore);
+							textScore.x = positionScore[i][j-2];
+							textScore.y = positionScore[i][j-1];
+							stage.getChildAt(2).addChild(textScore);
+
+						break;
+
+						case 3:
+
+						textScore = new PIXI.Text(arrayCardsToNewGame[i][j],styleScore);
+						textScore.x = positionAdvicePlayer[i][j-3];
+						textScore.y = positionAdvicePlayer[i][j-2];
+						stage.getChildAt(2).addChild(textScore);
+
+
+						break;
+
+						case 4:
+
+						textScore = new PIXI.Text("$"+arrayCardsToNewGame[i][j],styleScore);
+						textScore.x = positionMoneyPlayer[i][j-4];
+						textScore.y = positionMoneyPlayer[i][j-3];
+						stage.getChildAt(2).addChild(textScore);
+
+
+						break;
+
+
+
+					}
+
+					console.log("Tamaño del arreglo juego nuevo: " + arrayCardsToNewGame[i][j]);
+
+				}
+
+
+			}
+
+			/* for para el dealer */
+
+			for(var i = 0 ; i < 2; i++)
+			{	
+
+				var card = null;
+
+				switch(i)
+				{
+					case 0:
+
+					 card = new PIXI.Sprite.fromImage('/img/'+dealerCards[i]+'.png');
+					 card.width = 100;
+					 card.height = 100;
+					 card.x = positionDealer[i];   // Posisicon x del arreglo de position dealer
+					 card.y =positionDealer[i+1] ; // Posicion y del arreglo position dealer
+					 stage.getChildAt(2).addChild(card);
+
+					 positionDealer[i] += 120; // le sumo a la X del arrelgo position dealer ya que las cartas salen a lado
+
+					break;
+
+					case 1:
+
+
+					 card = new PIXI.Sprite.fromImage('/img/backDeck.png');
+					 card.width = 100;
+					 card.height = 100;
+					 card.x = positionDealer[i-1]; 
+					 card.y =positionDealer[i] ; 
+					 stage.getChildAt(2).addChild(card);
+					
+					 textScore = new PIXI.Text(dealerCards[i],styleScore);
+					 textScore.x = positionScoreDealer[i-1]; 
+					 textScore.y = positionScoreDealer[i];
+					 stage.getChildAt(2).addChild(textScore);
+
+
+
+					break;
+
+				}
+
+			
+
+			}
+
+
+			
+		});
+
+		socket.on('onHitCard',function(cardNew,indexPositionPlayer,newScorePlayer,newAdvicePlayer){
+
+
+			var card = PIXI.Sprite.fromImage('/img/'+cardNew+'.png');
+			card.width = 100;
+			card.height = 100;
+			card.x = positionCards[indexPositionPlayer][0];
+			card.y = positionCards[indexPositionPlayer][1];
+			stage.getChildAt(2).addChild(card);
+			positionCards[indexPositionPlayer][1] += 30;
+
+			textScore = new PIXI.Text(newScorePlayer,styleScore);
+			textScore.x = positionScore[indexPositionPlayer][0];
+			textScore.y = positionScore[indexPositionPlayer][1];
+			stage.getChildAt(2).addChild(textScore);
+
+			textScore = new PIXI.Text(newAdvicePlayer,styleScore);
+			textScore.x = positionAdvicePlayer[indexPositionPlayer][0];
+			textScore.y = positionAdvicePlayer[indexPositionPlayer][1];
+
+			console.log("Nuevo consejo: " + indexPositionPlayer);
+
+			//stage.getChildAt(2).getChildAt(1).removeChildAt(indexPositionPlayer);
+
+			stage.getChildAt(2).addChild(textScore);
+
+
+		});
+
+		socket.on('dealerScoreFinal',function(dealerCards,scoreDealerFinal,totalPlayers,indexConcurrency){
+
+			for(var i = 2; i < dealerCards.length; i++)
+			{
+
+				 card = new PIXI.Sprite.fromImage('/img/'+dealerCards[i]+'.png');
+				 card.width = 100;
+				 card.height = 100;
+				 card.x = positionDealer[0];
+				 card.y =positionDealer[1]; 
+				 stage.getChildAt(2).addChild(card);
+                 positionDealer[0] += 120; 
+
+
+			}
+
+			textScore = new PIXI.Text(scoreDealerFinal,styleScore);
+			textScore.x = positionScoreDealer[0]; 
+		    textScore.y = positionScoreDealer[1];
+		    stage.getChildAt(2).addChild(textScore);
+
+		  	
+		    
+
+
+
+		    /* Antes de que destruya que se muestren las cartas del dealer y quien gano */
+		   console.log("Hijos que tiene el stage principal: " + stage.children.length);
+
+			waitTime();		   
+			/*
+		   stage.getChildAt(2).destroy();
+
+		   console.log("Hijos que tiene el stage principal: " + stage.children.length);
+
+		   positionCards = [[100,230], [350,350],[635,370],[920,350],[1170,230]];
+
+		   positionDealer = [550,130];
+
+
+		   restart();
+
+		   */
+
+		  
+
+		});
+
+
+
+		var joinMultiplayer = function () {
+
+			socket.emit('joinPlayer',playerId);
+		};
+
+		var clickOnHit = function(){
+
+			socket.emit('hitCard',playerId);
+
+
+		}
+
+		var clickOnStand = function(){
+
+			socket.emit('stand',playerId);
+
+
+		}
+
+		var clickOnDeal = function(){
+
+
+			if(playerId == playerCanClicks)
+			{
+				if(playerBet > 0 )
+				{
+					socket.emit('deal',playerId);
+					socket.emit('bet',playerBet);
+					playerBet = 0;
+				}
+				else
+				{
+					alert("No has apostado nada");
+				}
+
+			}
+				
+		}
+
+		var clickOnCoin = function()
+		{	
+						
+		   if(playerId == playerCanClicks)
+		   {
+
+				playerBet += 25;
+
+			   textScore = new PIXI.Text("Your Bet: "+playerBet,styleScore);
+			   textScore.x = 570;
+			   textScore.y = 270;
+			   stage.getChildAt(2).addChild(textScore);
+
+			   
+		   }			
+
+		}
+
+		socket.on('canClick',function(playerCanClick){
+
+			console.log("Este wey puede tocar los botones: " + playerCanClick);
+
+			playerCanClicks = playerCanClick;
+
+			
+
+		});
+
+
+		var buttonMenu = new PIXI.Sprite(textureButtonMultiplayer);
+		buttonMenu.buttonMode = true;
+		buttonMenu.anchor.set(0.5);
+
+		buttonMenu.position.x = buttonPositions[0];
+		buttonMenu.position.y = buttonPositions[1];
+
+		buttonMenu.interactive = true;
+
+		buttonMenu.on('mouseover',onButtonOver);
+		buttonMenu.on('mouseout',onButtonOut);
+
+		buttonMenu.click = joinMultiplayer;
+
+
+		//stage.addChild(button);
+
+		scenePrincipalMenu.addChild(buttonMenu);
+
+		buttons.push(buttonMenu);
+
+
+
+		for(var i = 0; i < 4; i++)
+		{
+			var buttonGame = null;
+
+			switch(i)
+			{
+				case 0:
+
+					buttonGame = new PIXI.Sprite(textureButtonHit);
+					buttonGame.buttonMode = true;
+					buttonGame.width = 90;
+					buttonGame.height = 90;
+					buttonGame.position.x = buttonPositions[2];
+					buttonGame.position.y = buttonPositions[3];
+					buttonGame.interactive = true;
+
+					buttonGame.on('mouseover',onButtonGameOver);
+					buttonGame.on('mouseout',onButtonGameOut);
+					buttonGame.click = clickOnHit;
+
+
+				break;
+
+				case 1:
+
+
+					buttonGame = new PIXI.Sprite(textureButtonStand);
+					buttonGame.buttonMode = true;
+					buttonGame.width = 90;
+					buttonGame.height = 90;
+					buttonGame.position.x = buttonPositions[4];
+					buttonGame.position.y = buttonPositions[5];
+					buttonGame.interactive = true;
+
+					buttonGame.on('mouseover',onButtonGameOver);
+					buttonGame.on('mouseout',onButtonGameOut);
+					buttonGame.click = clickOnStand;
+
+
+				break;
+
+				case 2:
+
+					buttonGame = new PIXI.Sprite(textureButtonDeal);
+					buttonGame.buttonMode = true;
+					buttonGame.width = 90;
+					buttonGame.height = 90;
+					buttonGame.position.x = buttonPositions[6];
+					buttonGame.position.y = buttonPositions[7];
+					buttonGame.interactive = true;
+					buttonGame.click = clickOnDeal;
+
+					buttonGame.on('mouseover',onButtonGameOver);
+					buttonGame.on('mouseout',onButtonGameOut);
+					
+
+
+				break;
+
+
+				case 3:
+
+					buttonGame = new PIXI.Sprite(textureButtonCoin);
+					buttonGame.buttonMode = true;
+					buttonGame.width = 90;
+					buttonGame.height = 90;
+					buttonGame.position.x = buttonPositions[8];
+					buttonGame.position.y = buttonPositions[9];
+					buttonGame.interactive = true;
+					buttonGame.click = clickOnCoin;
+
+					buttonGame.on('mouseover',onButtonGameOver);
+					buttonGame.on('mouseout',onButtonGameOut);
+
+
+				break;
+
+
+				
+			}
+			
+			sceneGame.addChild(buttonGame);
+			buttons.push(buttonGame);
+
+		}
+
+
+
+		scenePrincipalMenu.visible = true;
+		sceneWaitingPlayers.visible = false;
+		sceneGame.visible = false;
+
+
+		stage.addChild(scenePrincipalMenu);
+		stage.addChild(sceneWaitingPlayers);
+		stage.addChild(sceneGame);
+
+		
+
+		// start animating
+		animate();
+
+		function animate() {
+
+		    requestAnimationFrame(animate);
+
+		    // render the root container
+		    renderer.render(stage);
+		}
+
+		function onButtonOver()
+		{
+		    this.isOver = true;
+
+		    if (this.isdown)
+		    {
+		        return;
+		    }
+
+		    this.texture = textureButtonPlay;
+		}
+
+		function onButtonOut()
+		{
+		    this.isOver = false;
+
+		    if (this.isdown)
+		    {
+		        return;
+		    }
+
+		    this.texture = textureButtonMultiplayer;
+		}
+
+		function onButtonGameOver()
+		{
+
+			this.width = 100;
+			this.height = 100;
+
+		}
+
+		function onButtonGameOut()
+		{
+			this.width = 90;
+			this.height = 90;
+		}
+
+		function restart()
+		{	
+			console.log("las veces que ha entrado aqui es igual al numero de jugadores en partida");
+
+			var sceneGame = new PIXI.DisplayObjectContainer;
+			var tableImage = PIXI.Sprite.fromImage('/img/mesa.jpg');
+			tableImage.width = renderer.width;
+			tableImage.height = renderer.height;
+			sceneGame.addChild(tableImage);
+
+			for(var i = 0; i < 4; i++)
+			{
+				var buttonGame = null;
+
+				switch(i)
+				{
+					case 0:
+
+						buttonGame = new PIXI.Sprite(textureButtonHit);
+						buttonGame.buttonMode = true;
+						buttonGame.width = 90;
+						buttonGame.height = 90;
+						buttonGame.position.x = buttonPositions[2];
+						buttonGame.position.y = buttonPositions[3];
+						buttonGame.interactive = true;
+
+						buttonGame.on('mouseover',onButtonGameOver);
+						buttonGame.on('mouseout',onButtonGameOut);
+						buttonGame.click = clickOnHit;
+
+
+					break;
+
+					case 1:
+
+
+						buttonGame = new PIXI.Sprite(textureButtonStand);
+						buttonGame.buttonMode = true;
+						buttonGame.width = 90;
+						buttonGame.height = 90;
+						buttonGame.position.x = buttonPositions[4];
+						buttonGame.position.y = buttonPositions[5];
+						buttonGame.interactive = true;
+
+						buttonGame.on('mouseover',onButtonGameOver);
+						buttonGame.on('mouseout',onButtonGameOut);
+						buttonGame.click = clickOnStand;
+
+
+					break;
+
+					case 2:
+
+						buttonGame = new PIXI.Sprite(textureButtonDeal);
+						buttonGame.buttonMode = true;
+						buttonGame.width = 90;
+						buttonGame.height = 90;
+						buttonGame.position.x = buttonPositions[6];
+						buttonGame.position.y = buttonPositions[7];
+						buttonGame.interactive = true;
+						buttonGame.click = clickOnDeal;
+
+						buttonGame.on('mouseover',onButtonGameOver);
+						buttonGame.on('mouseout',onButtonGameOut);
+					
+
+
+					break;
+
+
+					case 3:
+
+						buttonGame = new PIXI.Sprite(textureButtonCoin);
+						buttonGame.buttonMode = true;
+						buttonGame.width = 90;
+						buttonGame.height = 90;
+						buttonGame.position.x = buttonPositions[8];
+						buttonGame.position.y = buttonPositions[9];
+						buttonGame.interactive = true;
+						buttonGame.click = clickOnCoin;
+
+						buttonGame.on('mouseover',onButtonGameOver);
+						buttonGame.on('mouseout',onButtonGameOut);
+
+
+					break;
+
+
+					
+				}
+				
+				sceneGame.addChild(buttonGame);
+				
+
+			}
+			
+
+			stage.addChild(sceneGame);
+
+		}
+
+		function waitTime()
+		{
+
+			setTimeout(function(){
+
+		  	   stage.getChildAt(2).destroy();
+		  	   positionCards = [[100,230], [350,350],[635,370],[920,350],[1170,230]];
+		       positionDealer = [550,130];
+		       playerBet = 0;
+		       restart();	
+
+
+
+		  	},2000);
+
+		}
+
+	</script>
+	
+</body>
+</html>
+
